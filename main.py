@@ -180,12 +180,61 @@ def message_box(subject, content):
 
 
 def get_level(score):
-    if score < 5:
-        return 0  # Level 0 (easiest)
-    elif score < 10:
-        return 1  # Level 1 (medium)
+    if score < 10:
+        return 1
+    elif score < 20:
+        return 2
+    elif score < 30:
+        return 3
+    elif score < 40:
+        return 4
     else:
-        return 2  # Level 2 (difficult)
+        return 5
+
+def game_over_screen(surface, score):
+    font = pygame.font.SysFont(None, 48)
+    text = font.render("Game Over", True, (255, 255, 255))
+    score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+    play_again_text = font.render("Play Again", True, (255, 255, 255))
+    exit_text = font.render("Exit", True, (255, 255, 255))
+
+    play_again_rect = play_again_text.get_rect(center=(width // 3, 3 * width // 4))
+    exit_rect = exit_text.get_rect(center=(2 * width // 3, 3 * width // 4))
+
+    surface.fill((0, 0, 0))
+    surface.blit(text, (width // 2 - text.get_width() // 2, width // 3))
+    surface.blit(score_text, (width // 2 - score_text.get_width() // 2, width // 2))
+    pygame.draw.rect(surface, (0, 0, 0), play_again_rect, border_radius=10)
+    surface.blit(play_again_text, play_again_rect.topleft)
+    pygame.draw.rect(surface, (0, 0, 0), exit_rect, border_radius=10)
+    surface.blit(exit_text, exit_rect.topleft)
+
+    pygame.display.update()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if play_again_rect.collidepoint(event.pos):
+                    return True
+                elif exit_rect.collidepoint(event.pos):
+                    pygame.quit()
+                    exit()
+
+def fading_text_animation(surface, text, duration):
+    font = pygame.font.SysFont(None, 36)
+    alpha = 255
+
+    for frame in range(60):  # Fading animation duration (60 frames)
+        surface.fill((0, 0, 0))
+        alpha -= 4
+        text_surface = font.render(text, True, (255, 255, 255, alpha))
+        text_rect = text_surface.get_rect(center=(width // 2, 30))
+        surface.blit(text_surface, text_rect)
+        pygame.display.update()
+        pygame.time.delay(duration // 60)  # Adjust the delay for smoother animation
 
 def main():
     global width, rows, s, snack
@@ -196,7 +245,7 @@ def main():
     snack = cube(randomSnack(rows, s), color=(0, 255, 0))
     flag = True
     score = 0  # Initialize the score
-    speeds = [10, 15, 20]  # Adjust these values as needed
+    speeds = [5, 10, 15, 20, 25]  # Adjust these values as needed
     level = 0
     clock = pygame.time.Clock()
 
@@ -209,14 +258,26 @@ def main():
             snack = cube(randomSnack(rows, s), color=(0, 255, 0))
             score += 1  # Increment the score when a snack is eaten
 
+            # Update the level and speed based on the score
+            new_level = get_level(score)
+            if new_level != level:
+                level = new_level
+                fading_text_animation(win,f"Level {level}", 1500)
+                if level < len(speeds):
+                    clock.tick(speeds[level])  # Set the new speed based on the level
+
+                if level == 5:
+                    # Reached the maximum level, cap the speed at the fastest value
+                    clock.tick(speeds[-1])
+
         for x in range(len(s.body)):
             if s.body[x].pos in list(map(lambda z: z.pos, s.body[x + 1:])):
                 print('Score: ', score)  # Print the final score
-                message_box('You Lost!', 'Play again...')
-                s.reset((10, 10))
-                score = 0  # Reset the score
-                level = 0
-                break
+                if game_over_screen(win, score):
+                    s.reset((10, 10))
+                    score = 0
+                    level = 0
+                    break
 
         redrawWindow(win, score)  # Pass the score to the redrawWindow function
 
